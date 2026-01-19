@@ -1,0 +1,511 @@
+/* リセット＆基本設定 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+    --color-bg: #2a2438;
+    --color-screen: #9ba885;
+    --color-border: #4a4458;
+    --color-button: #6b5d7a;
+    --color-button-hover: #8a7a9a;
+    --color-text: #fef6e4;
+    --color-accent: #ff6b9d;
+    --safe-area-top: env(safe-area-inset-top);
+    --safe-area-bottom: env(safe-area-inset-bottom);
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: var(--color-bg);
+    color: var(--color-text);
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+/* 画面コンテナ */
+.screen {
+    display: none;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+}
+
+.screen.active {
+    display: flex;
+    flex-direction: column;
+}
+
+#game-container {
+    background: var(--color-screen);
+    position: relative;
+}
+
+/* ステータスバー */
+.status-bar {
+    background: var(--color-border);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 4px solid var(--color-bg);
+}
+
+.time-display {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--color-text);
+}
+
+.status-icons {
+    display: flex;
+    gap: 8px;
+}
+
+.status-icon {
+    font-size: 20px;
+    opacity: 0.4;
+    transition: opacity 0.3s;
+}
+
+.status-icon.active {
+    opacity: 1;
+    animation: pulse 1s infinite;
+}
+
+.status-icon.hidden {
+    display: none;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+/* ペット表示エリア */
+.pet-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+}
+
+#pet-canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+}
+
+.pet-name {
+    font-size: 24px;
+    font-weight: bold;
+    margin-top: 16px;
+    text-shadow: 2px 2px 0 var(--color-border);
+}
+
+.pet-age {
+    font-size: 14px;
+    margin-top: 4px;
+    opacity: 0.8;
+}
+
+/* 汚れ表示 */
+.dirt-container {
+    position: absolute;
+    bottom: 200px;
+    left: 0;
+    right: 0;
+    height: 100px;
+    pointer-events: none;
+}
+
+.dirt {
+    position: absolute;
+    font-size: 24px;
+    animation: dirt-appear 0.5s;
+}
+
+@keyframes dirt-appear {
+    from {
+        transform: scale(0) rotate(0deg);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1) rotate(360deg);
+        opacity: 1;
+    }
+}
+
+/* ボタンコンテナ */
+.button-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 16px;
+    background: var(--color-border);
+    border-top: 4px solid var(--color-bg);
+}
+
+.main-button {
+    background: var(--color-button);
+    border: 4px solid var(--color-bg);
+    border-radius: 12px;
+    padding: 20px 16px;
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--color-text);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    font-family: inherit;
+    min-height: 80px;
+}
+
+.main-button:active {
+    transform: scale(0.95);
+    background: var(--color-button-hover);
+}
+
+.button-icon {
+    font-size: 32px;
+}
+
+.button-text {
+    font-size: 14px;
+}
+
+/* モーダル画面 */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background: var(--color-screen);
+    border: 6px solid var(--color-border);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-content h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+    color: var(--color-border);
+}
+
+.modal-content h3 {
+    font-size: 18px;
+    margin: 16px 0 12px;
+    color: var(--color-border);
+}
+
+/* アイテムリスト */
+.item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.item-button {
+    background: var(--color-button);
+    border: 3px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 16px;
+    color: var(--color-text);
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.item-button:active {
+    transform: scale(0.98);
+    background: var(--color-button-hover);
+}
+
+.item-name {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.item-description {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* ゲームエリア */
+.game-area {
+    margin-bottom: 20px;
+    min-height: 250px;
+}
+
+#game-select {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.game-select-button {
+    background: var(--color-accent);
+    border: 3px solid var(--color-border);
+    border-radius: 8px;
+    padding: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--color-text);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.game-select-button:active {
+    transform: scale(0.95);
+    filter: brightness(1.2);
+}
+
+.minigame {
+    text-align: center;
+}
+
+.minigame.hidden {
+    display: none;
+}
+
+.minigame p {
+    margin-bottom: 16px;
+    font-size: 16px;
+    color: var(--color-border);
+}
+
+#timing-canvas {
+    border: 3px solid var(--color-border);
+    background: white;
+    margin: 16px auto;
+    display: block;
+    border-radius: 8px;
+}
+
+.game-button {
+    background: var(--color-accent);
+    border: 4px solid var(--color-border);
+    border-radius: 12px;
+    padding: 16px 32px;
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--color-text);
+    cursor: pointer;
+    font-family: inherit;
+    margin: 8px;
+}
+
+.game-button:active {
+    transform: scale(0.95);
+}
+
+.choice-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.choice-button {
+    background: var(--color-button);
+    border: 3px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--color-text);
+    cursor: pointer;
+    font-family: inherit;
+    flex: 1;
+}
+
+.choice-button:active {
+    transform: scale(0.95);
+    background: var(--color-button-hover);
+}
+
+.game-result {
+    margin-top: 16px;
+    font-size: 18px;
+    font-weight: bold;
+    min-height: 30px;
+    color: var(--color-border);
+}
+
+/* ステータス詳細 */
+.status-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--color-border);
+}
+
+.status-row > span:first-child {
+    min-width: 80px;
+    font-weight: bold;
+}
+
+.status-meter {
+    flex: 1;
+    height: 20px;
+    background: var(--color-border);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid var(--color-bg);
+}
+
+.meter-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    transition: width 0.3s;
+}
+
+/* 設定セクション */
+.menu-section {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--color-border);
+}
+
+.menu-section:last-of-type {
+    border-bottom: none;
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0;
+    color: var(--color-border);
+}
+
+.setting-row label {
+    font-weight: bold;
+    min-width: 60px;
+}
+
+#volume-slider {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+}
+
+.setting-button {
+    background: var(--color-button);
+    border: 3px solid var(--color-border);
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--color-text);
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+    margin: 8px 0;
+}
+
+.setting-button:active {
+    transform: scale(0.98);
+}
+
+.danger-button {
+    background: #dc2626;
+    border: 3px solid var(--color-border);
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--color-text);
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+}
+
+.danger-button:active {
+    transform: scale(0.98);
+    background: #b91c1c;
+}
+
+.modal-button {
+    background: var(--color-border);
+    border: 3px solid var(--color-bg);
+    border-radius: 8px;
+    padding: 14px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--color-text);
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+    margin-top: 12px;
+}
+
+.modal-button:active {
+    transform: scale(0.98);
+}
+
+/* 進化エフェクト */
+@keyframes evolution-flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.evolution-effect {
+    animation: evolution-flash 0.3s 3;
+}
+
+/* スクロールバースタイル */
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: var(--color-border);
+    border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--color-button);
+    border-radius: 4px;
+}

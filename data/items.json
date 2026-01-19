@@ -1,0 +1,82 @@
+{
+  "foods": [
+    {
+      "id": "snack_a",
+      "name": "ポポの実",
+      "description": "小さくて甘い実",
+      "effects": {
+        "hunger": -20,
+        "happiness": 5,
+        "energy": 10
+      },
+      "icon": "berry"
+    },
+    {
+      "id": "meal_a",
+      "name": "もぐもぐパン",
+      "description": "ふんわり焼きたてパン",
+      "effects": {
+        "hunger": -40,
+        "happiness": 10,
+        "energy": 20
+      },
+      "icon": "bread"
+    },
+    {
+      "id": "treat_a",
+      "name": "キラキラゼリー",
+      "description": "特別なご褒美ゼリー",
+      "effects": {
+        "hunger": -30,
+        "happiness": 20,
+        "energy": 15
+      },
+      "icon": "jelly"
+    }
+  ],
+  "toys": [
+    {
+      "id": "toy_ball",
+      "name": "コロコロボール",
+      "description": "転がして遊べるボール",
+      "effects": {
+        "happiness": 15,
+        "energy": -10
+      },
+      "minigame": "timing"
+    },
+    {
+      "id": "toy_puzzle",
+      "name": "カチカチパズル",
+      "description": "頭を使うパズル",
+      "effects": {
+        "happiness": 20,
+        "energy": -15
+      },
+      "minigame": "choice"
+    }
+  ],
+  "medicine": [
+    {
+      "id": "medicine_basic",
+      "name": "げんきぐすり",
+      "description": "病気を治す薬",
+      "effects": {
+        "sick": false,
+        "health": 50
+      },
+      "icon": "pill"
+    }
+  ],
+  "cleaning": [
+    {
+      "id": "clean_basic",
+      "name": "ピカピカブラシ",
+      "description": "汚れを落とす",
+      "effects": {
+        "cleanliness": 100
+      },
+      "icon": "brush"
+    }
+  ]
+}

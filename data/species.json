@@ -1,0 +1,123 @@
+{
+  "stages": [
+    {
+      "id": "egg",
+      "name": "タマコ",
+      "minAge": 0,
+      "maxAge": 10,
+      "description": "丸い殻に包まれた謎の生命体",
+      "appearance": {
+        "shape": "oval",
+        "color": "#FFE4B5",
+        "pattern": "spots",
+        "size": 40
+      },
+      "animations": {
+        "idle": "wobble",
+        "happy": "bounce",
+        "sad": "shake"
+      }
+    },
+    {
+      "id": "child",
+      "name": "コロリン",
+      "minAge": 10,
+      "maxAge": 60,
+      "description": "元気に動き回る小さな生き物",
+      "appearance": {
+        "shape": "round",
+        "color": "#87CEEB",
+        "pattern": "stripe",
+        "size": 50,
+        "eyes": true,
+        "limbs": 2
+      },
+      "animations": {
+        "idle": "sway",
+        "happy": "jump",
+        "sad": "droop"
+      },
+      "evolutionRequirements": {
+        "minAge": 10,
+        "minCareQuality": 50,
+        "maxMistakes": 5
+      }
+    },
+    {
+      "id": "adult_happy",
+      "name": "ハピネル",
+      "minAge": 60,
+      "maxAge": 9999,
+      "description": "愛情いっぱいに育った理想の姿",
+      "appearance": {
+        "shape": "upright",
+        "color": "#FFB6C1",
+        "pattern": "hearts",
+        "size": 60,
+        "eyes": true,
+        "limbs": 4,
+        "wings": true
+      },
+      "animations": {
+        "idle": "float",
+        "happy": "spin",
+        "sad": "dim"
+      },
+      "evolutionRequirements": {
+        "minAge": 60,
+        "minCareQuality": 80,
+        "maxMistakes": 3
+      }
+    },
+    {
+      "id": "adult_normal",
+      "name": "ノマール",
+      "minAge": 60,
+      "maxAge": 9999,
+      "description": "平凡だけど愛らしい成体",
+      "appearance": {
+        "shape": "upright",
+        "color": "#98FB98",
+        "pattern": "dots",
+        "size": 60,
+        "eyes": true,
+        "limbs": 4
+      },
+      "animations": {
+        "idle": "bob",
+        "happy": "wiggle",
+        "sad": "slouch"
+      },
+      "evolutionRequirements": {
+        "minAge": 60,
+        "minCareQuality": 50,
+        "maxMistakes": 10
+      }
+    },
+    {
+      "id": "adult_poor",
+      "name": "グルーモ",
+      "minAge": 60,
+      "maxAge": 9999,
+      "description": "ケア不足で少し不機嫌な姿",
+      "appearance": {
+        "shape": "squat",
+        "color": "#DDA0DD",
+        "pattern": "messy",
+        "size": 60,
+        "eyes": true,
+        "limbs": 3
+      },
+      "animations": {
+        "idle": "sulk",
+        "happy": "perk",
+        "sad": "grumble"
+      },
+      "evolutionRequirements": {
+        "minAge": 60,
+        "minCareQuality": 0,
+        "maxMistakes": 999
+      }
+    }
+  ]
+}

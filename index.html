@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>エッグチ - 育成ペットゲーム</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- メイン画面 -->
+    <div id="game-container" class="screen active">
+        <!-- ステータスバー -->
+        <div class="status-bar">
+            <div class="time-display" id="time-display">00:00</div>
+            <div class="status-icons">
+                <div class="status-icon" id="icon-hunger" title="空腹">🍽️</div>
+                <div class="status-icon" id="icon-energy" title="元気">⚡</div>
+                <div class="status-icon" id="icon-happiness" title="ごきげん">😊</div>
+                <div class="status-icon" id="icon-cleanliness" title="清潔">✨</div>
+                <div class="status-icon hidden" id="icon-sick" title="病気">🤒</div>
+                <div class="status-icon hidden" id="icon-sleep" title="眠い">💤</div>
+            </div>
+        </div>
+
+        <!-- ペット表示エリア -->
+        <div class="pet-container">
+            <canvas id="pet-canvas" width="200" height="200"></canvas>
+            <div class="pet-name" id="pet-name">タマコ</div>
+            <div class="pet-age" id="pet-age">年齢: 0分</div>
+        </div>
+
+        <!-- 汚れ表示 -->
+        <div id="dirt-container" class="dirt-container"></div>
+
+        <!-- メインボタン -->
+        <div class="button-container">
+            <button class="main-button" id="btn-feed" aria-label="えさをあげる">
+                <span class="button-icon">🍚</span>
+                <span class="button-text">ごはん</span>
+            </button>
+            <button class="main-button" id="btn-play" aria-label="あそぶ">
+                <span class="button-icon">🎮</span>
+                <span class="button-text">あそぶ</span>
+            </button>
+            <button class="main-button" id="btn-clean" aria-label="そうじ">
+                <span class="button-icon">🧹</span>
+                <span class="button-text">そうじ</span>
+            </button>
+            <button class="main-button" id="btn-menu" aria-label="メニュー">
+                <span class="button-icon">📋</span>
+                <span class="button-text">メニュー</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 食べ物選択画面 -->
+    <div id="feed-screen" class="screen modal">
+        <div class="modal-content">
+            <h2>ごはんをあげる</h2>
+            <div class="item-list" id="food-list"></div>
+            <button class="modal-button" id="btn-feed-close">もどる</button>
+        </div>
+    </div>
+
+    <!-- ミニゲーム画面 -->
+    <div id="game-screen" class="screen modal">
+        <div class="modal-content">
+            <h2 id="game-title">あそぶ</h2>
+            <div class="game-area" id="game-area">
+                <!-- ゲームタイプ選択 -->
+                <div id="game-select">
+                    <button class="game-select-button" data-game="timing">タイミングゲーム</button>
+                    <button class="game-select-button" data-game="choice">どっちゲーム</button>
+                </div>
+                <!-- タイミングゲーム -->
+                <div id="timing-game" class="minigame hidden">
+                    <p>バーが中央に来たらタップ!</p>
+                    <canvas id="timing-canvas" width="250" height="100"></canvas>
+                    <button class="game-button" id="timing-button">タップ!</button>
+                    <div class="game-result" id="timing-result"></div>
+                </div>
+                <!-- 選択ゲーム -->
+                <div id="choice-game" class="minigame hidden">
+                    <p id="choice-question">どっちにかくれてる?</p>
+                    <div class="choice-buttons">
+                        <button class="choice-button" data-choice="left">👈 ひだり</button>
+                        <button class="choice-button" data-choice="right">みぎ 👉</button>
+                    </div>
+                    <div class="game-result" id="choice-result"></div>
+                </div>
+            </div>
+            <button class="modal-button" id="btn-game-close">もどる</button>
+        </div>
+    </div>
+
+    <!-- メニュー画面 -->
+    <div id="menu-screen" class="screen modal">
+        <div class="modal-content">
+            <h2>メニュー</h2>
+            <div class="menu-section">
+                <h3>ステータス</h3>
+                <div class="status-details">
+                    <div class="status-row">
+                        <span>空腹:</span>
+                        <div class="status-meter"><div id="meter-hunger" class="meter-fill"></div></div>
+                        <span id="val-hunger">0</span>
+                    </div>
+                    <div class="status-row">
+                        <span>元気:</span>
+                        <div class="status-meter"><div id="meter-energy" class="meter-fill"></div></div>
+                        <span id="val-energy">0</span>
+                    </div>
+                    <div class="status-row">
+                        <span>ごきげん:</span>
+                        <div class="status-meter"><div id="meter-happiness" class="meter-fill"></div></div>
+                        <span id="val-happiness">0</span>
+                    </div>
+                    <div class="status-row">
+                        <span>清潔:</span>
+                        <div class="status-meter"><div id="meter-cleanliness" class="meter-fill"></div></div>
+                        <span id="val-cleanliness">0</span>
+                    </div>
+                    <div class="status-row">
+                        <span>年齢:</span>
+                        <span id="val-age-detail">0分</span>
+                    </div>
+                    <div class="status-row">
+                        <span>ステージ:</span>
+                        <span id="val-stage">タマコ</span>
+                    </div>
+                    <div class="status-row">
+                        <span>ケアミス:</span>
+                        <span id="val-mistakes">0回</span>
+                    </div>
+                </div>
+            </div>
+            <div class="menu-section">
+                <h3>設定</h3>
+                <div class="setting-row">
+                    <label for="volume-slider">音量:</label>
+                    <input type="range" id="volume-slider" min="0" max="100" value="50">
+                    <span id="volume-value">50%</span>
+                </div>
+                <button class="setting-button" id="btn-mute">ミュート: OFF</button>
+            </div>
+            <div class="menu-section">
+                <h3>ケア</h3>
+                <button class="setting-button" id="btn-medicine">げんきぐすりを使う</button>
+                <button class="setting-button" id="btn-sleep">ねる / おこす</button>
+            </div>
+            <div class="menu-section">
+                <button class="danger-button" id="btn-reset">リセット（最初からやり直す）</button>
+            </div>
+            <button class="modal-button" id="btn-menu-close">もどる</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
