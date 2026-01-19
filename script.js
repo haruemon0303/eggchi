@@ -8,36 +8,27 @@ let audioContext = null;
 let isMuted = false;
 let volume = 0.5;
 
-// ゲームループ用
-let lastUpdateTime = Date.now();
-let animationFrame = null;
+// ゲームループ
+let lastTickTime = Date.now();
+let animationTime = 0;
 
-// ミニゲーム用
-let timingGameState = null;
-let choiceGameState = null;
+// ミニゲーム状態
+let miniGameActive = false;
+let gameBarPosition = 0;
+let gameBarDirection = 1;
 
 // ========================================
 // 初期化
 // ========================================
 async function init() {
-    // データロード
-    await loadGameData();
-
-    // AudioContext初期化（ユーザー操作後に行う）
-    document.addEventListener('click', initAudio, { once: true });
-
-    // ゲーム状態の初期化またはロード
+    await loadData();
+    setupAudio();
     loadOrCreateGameState();
-
-    // UI初期化
-    initUI();
-
-    // ゲームループ開始
+    setupUI();
     startGameLoop();
 }
 
-// データロード
-async function loadGameData() {
+async function loadData() {
     try {
         const [speciesRes, itemsRes] = await Promise.all([
             fetch('data/species.json'),
@@ -46,41 +37,43 @@ async function loadGameData() {
         speciesData = await speciesRes.json();
         itemsData = await itemsRes.json();
     } catch (error) {
-        console.error('Failed to load game data:', error);
-        alert('ゲームデータの読み込みに失敗しました');
+        console.error('Failed to load data:', error);
+        alert('データ読み込みエラー');
     }
 }
 
-// Audio初期化
-function initAudio() {
-    if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
+function setupAudio() {
+    document.addEventListener('click', () => {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }, { once: true });
 }
 
 // ========================================
-// ゲーム状態管理
+// ゲーム状態
 // ========================================
 function createNewGameState() {
     return {
         // ステータス (0-100)
-        hunger: 0,          // 空腹度（高いほど空腹）
-        energy: 100,        // 元気
-        happiness: 50,      // ごきげん
-        cleanliness: 100,   // 清潔度
+        hunger: 0,
+        energy: 100,
+        mood: 50,
+        cleanliness: 100,
+        affection: 50,
 
         // 状態フラグ
         isSick: false,
-        isSleeping: false,
-        dirtLevel: 0,       // 汚れの量
 
-        // 成長関連
-        age: 0,             // 年齢（分）
+        // 成長
+        age: 0,
         stageId: 'egg',
 
-        // ケア品質追跡
-        careQuality: 100,   // 平均ケア品質
-        mistakes: 0,        // ケアミス回数
+        // ケア傾向カウント
+        feedCount: 0,
+        playCount: 0,
+        cleanCount: 0,
+        neglectTime: 0,
 
         // タイムスタンプ
         lastUpdateTime: Date.now(),
@@ -89,13 +82,10 @@ function createNewGameState() {
 }
 
 function loadOrCreateGameState() {
-    const saved = localStorage.getItem('eggchi_save');
+    const saved = localStorage.getItem('mirumono_save');
     if (saved) {
         gameState = JSON.parse(saved);
-        // 不在時間を計算して状態を更新
-        const now = Date.now();
-        const timeDiff = now - gameState.lastUpdateTime;
-        applyTimeProgression(timeDiff);
+        applyTimeProgression(Date.now() - gameState.lastUpdateTime);
     } else {
         gameState = createNewGameState();
     }
@@ -105,217 +95,197 @@ function loadOrCreateGameState() {
 
 function saveGameState() {
     gameState.lastUpdateTime = Date.now();
-    localStorage.setItem('eggchi_save', JSON.stringify(gameState));
+    localStorage.setItem('mirumono_save', JSON.stringify(gameState));
 }
 
-// 時間経過による状態変化
 function applyTimeProgression(timeDiff) {
-    // 最大48時間分まで適用（それ以上は切り捨て）
-    const maxTime = 48 * 60 * 60 * 1000;
-    timeDiff = Math.min(timeDiff, maxTime);
+    // 最大24時間まで
+    timeDiff = Math.min(timeDiff, 24 * 60 * 60 * 1000);
 
     const minutes = timeDiff / (60 * 1000);
 
-    // 眠っている場合は進行が遅い
-    const progressionRate = gameState.isSleeping ? 0.3 : 1.0;
-
-    // 年齢を増やす
+    // 年齢増加
     gameState.age += minutes;
 
-    // ステータス悪化
-    gameState.hunger += minutes * 0.8 * progressionRate;
-    gameState.energy -= minutes * 0.5 * progressionRate;
-    gameState.happiness -= minutes * 0.3 * progressionRate;
-    gameState.cleanliness -= minutes * 0.4 * progressionRate;
+    // ステータス変化（5分で以下の変化）
+    const rate = minutes / 5;
+    gameState.hunger += 6 * rate;
+    gameState.energy -= 4 * rate;
+    gameState.mood -= 2 * rate;
+    gameState.cleanliness -= 3 * rate;
+    gameState.affection -= 1 * rate;
 
-    // 範囲制限
-    gameState.hunger = Math.max(0, Math.min(100, gameState.hunger));
-    gameState.energy = Math.max(0, Math.min(100, gameState.energy));
-    gameState.happiness = Math.max(0, Math.min(100, gameState.happiness));
-    gameState.cleanliness = Math.max(0, Math.min(100, gameState.cleanliness));
-
-    // 汚れレベル増加
-    if (gameState.cleanliness < 30) {
-        gameState.dirtLevel = Math.floor((30 - gameState.cleanliness) / 5);
-    } else {
-        gameState.dirtLevel = 0;
+    // 放置時間カウント
+    if (minutes > 10) {
+        gameState.neglectTime += minutes;
     }
 
-    // バッドステータスチェック
-    checkBadStatus();
+    // 範囲制限
+    gameState.hunger = clamp(gameState.hunger, 0, 100);
+    gameState.energy = clamp(gameState.energy, 0, 100);
+    gameState.mood = clamp(gameState.mood, 0, 100);
+    gameState.cleanliness = clamp(gameState.cleanliness, 0, 100);
+    gameState.affection = clamp(gameState.affection, 0, 100);
+
+    // 体調不良チェック
+    checkSickness();
 
     // 進化チェック
     checkEvolution();
-
-    // ケア品質更新
-    updateCareQuality();
 }
 
-function checkBadStatus() {
-    // 病気判定
-    const lowStatCount = [
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function checkSickness() {
+    const badCount = [
         gameState.hunger > 80,
         gameState.energy < 20,
         gameState.cleanliness < 20
     ].filter(Boolean).length;
 
-    if (lowStatCount >= 2 && Math.random() < 0.3) {
+    if (badCount >= 2 && Math.random() < 0.3) {
         gameState.isSick = true;
     }
-
-    // 病気の場合、他のステータスも悪化
-    if (gameState.isSick) {
-        gameState.happiness = Math.max(0, gameState.happiness - 10);
-        gameState.energy = Math.max(0, gameState.energy - 5);
-    }
 }
 
-function updateCareQuality() {
-    // ケア品質 = 各ステータスの良好度の平均
-    const hungerScore = Math.max(0, 100 - gameState.hunger);
-    const energyScore = gameState.energy;
-    const happinessScore = gameState.happiness;
-    const cleanScore = gameState.cleanliness;
-
-    gameState.careQuality = (hungerScore + energyScore + happinessScore + cleanScore) / 4;
-
-    // ミス回数カウント（ステータスが悪い状態が続いたら）
-    if (gameState.careQuality < 30) {
-        gameState.mistakes++;
-    }
-}
-
-// 進化チェック
 function checkEvolution() {
     const currentStage = speciesData.stages.find(s => s.id === gameState.stageId);
     if (!currentStage) return;
 
-    // 次のステージを探す
-    for (const stage of speciesData.stages) {
-        if (stage.id === gameState.stageId) continue;
-        if (!stage.evolutionRequirements) continue;
-
-        const req = stage.evolutionRequirements;
-        if (gameState.age >= req.minAge &&
-            gameState.careQuality >= req.minCareQuality &&
-            gameState.mistakes <= req.maxMistakes) {
-            evolve(stage.id);
-            break;
+    // 年齢で自動進化
+    if (gameState.stageId === 'egg' && gameState.age >= 5) {
+        evolve('child');
+    } else if (gameState.stageId === 'child' && gameState.age >= 30) {
+        // ケア傾向で分岐
+        const careType = determineCareType();
+        const nextStage = speciesData.stages.find(s =>
+            s.evolutionRequirements && s.evolutionRequirements.careType === careType
+        );
+        if (nextStage) {
+            evolve(nextStage.id);
         }
     }
 }
 
-function evolve(newStageId) {
-    gameState.stageId = newStageId;
-    playSound('evolution');
-    showEvolutionEffect();
-    saveGameState();
+function determineCareType() {
+    const counts = {
+        feed: gameState.feedCount,
+        play: gameState.playCount,
+        clean: gameState.cleanCount,
+        neglect: gameState.neglectTime / 60, // 分→時間
+        balanced: Math.min(gameState.feedCount, gameState.playCount, gameState.cleanCount)
+    };
+
+    // 最も多い傾向を選択
+    let maxType = 'balanced';
+    let maxValue = counts.balanced;
+
+    for (const [type, value] of Object.entries(counts)) {
+        if (value > maxValue) {
+            maxValue = value;
+            maxType = type;
+        }
+    }
+
+    return maxType;
 }
 
-function showEvolutionEffect() {
+function evolve(newStageId) {
+    gameState.stageId = newStageId;
+    const stage = speciesData.stages.find(s => s.id === newStageId);
+
+    playSound('evolution');
+    showMessage(`進化した！ ${stage.name}になった`);
+
     const canvas = document.getElementById('pet-canvas');
     canvas.classList.add('evolution-effect');
     setTimeout(() => {
         canvas.classList.remove('evolution-effect');
-    }, 1000);
+    }, 1200);
+
+    saveGameState();
 }
 
 // ========================================
-// UI初期化とイベント
+// UI セットアップ
 // ========================================
-function initUI() {
+function setupUI() {
     // メインボタン
-    document.getElementById('btn-feed').addEventListener('click', () => openScreen('feed-screen'));
-    document.getElementById('btn-play').addEventListener('click', () => openScreen('game-screen'));
+    document.getElementById('btn-feed').addEventListener('click', () => openModal('modal-feed'));
+    document.getElementById('btn-play').addEventListener('click', () => openModal('modal-game'));
     document.getElementById('btn-clean').addEventListener('click', doClean);
-    document.getElementById('btn-menu').addEventListener('click', () => openScreen('menu-screen'));
+    document.getElementById('btn-menu').addEventListener('click', () => openModal('modal-menu'));
 
-    // 食べ物画面
-    document.getElementById('btn-feed-close').addEventListener('click', () => closeScreen('feed-screen'));
+    // 食べ物リスト
     populateFoodList();
 
-    // ゲーム画面
-    document.getElementById('btn-game-close').addEventListener('click', () => closeScreen('game-screen'));
-    document.querySelectorAll('.game-select-button').forEach(btn => {
-        btn.addEventListener('click', (e) => startMinigame(e.target.dataset.game));
-    });
+    // ミニゲーム
+    document.getElementById('game-tap-btn').addEventListener('click', onGameTap);
 
-    // タイミングゲーム
-    document.getElementById('timing-button').addEventListener('click', timingGameClick);
-
-    // 選択ゲーム
-    document.querySelectorAll('.choice-button').forEach(btn => {
-        btn.addEventListener('click', (e) => choiceGameClick(e.target.dataset.choice));
-    });
-
-    // メニュー画面
-    document.getElementById('btn-menu-close').addEventListener('click', () => closeScreen('menu-screen'));
+    // メニュー
     document.getElementById('btn-medicine').addEventListener('click', useMedicine);
-    document.getElementById('btn-sleep').addEventListener('click', toggleSleep);
     document.getElementById('btn-reset').addEventListener('click', resetGame);
+    document.getElementById('btn-mute').addEventListener('click', toggleMute);
 
-    // 音量設定
-    const volumeSlider = document.getElementById('volume-slider');
-    volumeSlider.addEventListener('input', (e) => {
+    document.getElementById('volume').addEventListener('input', (e) => {
         volume = e.target.value / 100;
-        document.getElementById('volume-value').textContent = e.target.value + '%';
+        document.getElementById('volume-text').textContent = e.target.value + '%';
     });
 
-    const muteBtn = document.getElementById('btn-mute');
-    muteBtn.addEventListener('click', () => {
-        isMuted = !isMuted;
-        muteBtn.textContent = 'ミュート: ' + (isMuted ? 'ON' : 'OFF');
+    // モーダルクローズ
+    document.querySelectorAll('.close-btn').forEach(btn => {
+        btn.addEventListener('click', closeAllModals);
     });
 
-    // 初期UI更新
     updateUI();
 }
 
-function openScreen(screenId) {
-    document.getElementById(screenId).classList.add('active');
-    if (screenId === 'menu-screen') {
-        updateMenuStatus();
-    } else if (screenId === 'game-screen') {
-        resetGameScreen();
+function openModal(modalId) {
+    document.getElementById(modalId).classList.add('active');
+    if (modalId === 'modal-game') {
+        startMiniGame();
+    } else if (modalId === 'modal-menu') {
+        updateMenuUI();
     }
 }
 
-function closeScreen(screenId) {
-    document.getElementById(screenId).classList.remove('active');
+function closeAllModals() {
+    document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+    miniGameActive = false;
 }
 
-function resetGameScreen() {
-    document.getElementById('game-select').style.display = 'flex';
-    document.getElementById('timing-game').classList.add('hidden');
-    document.getElementById('choice-game').classList.add('hidden');
+function populateFoodList() {
+    const list = document.getElementById('food-list');
+    list.innerHTML = '';
+
+    itemsData.foods.forEach(food => {
+        const btn = document.createElement('button');
+        btn.className = 'item-btn';
+        btn.innerHTML = `
+            <div class="item-name">${food.name}</div>
+            <div class="item-desc">${food.description}</div>
+        `;
+        btn.addEventListener('click', () => feedPet(food));
+        list.appendChild(btn);
+    });
 }
 
 // ========================================
 // アクション
 // ========================================
-function populateFoodList() {
-    const foodList = document.getElementById('food-list');
-    foodList.innerHTML = '';
-
-    itemsData.foods.forEach(food => {
-        const btn = document.createElement('button');
-        btn.className = 'item-button';
-        btn.innerHTML = `
-            <div class="item-name">${food.name}</div>
-            <div class="item-description">${food.description}</div>
-        `;
-        btn.addEventListener('click', () => feedPet(food));
-        foodList.appendChild(btn);
-    });
-}
-
 function feedPet(food) {
-    gameState.hunger = Math.max(0, gameState.hunger + food.effects.hunger);
-    gameState.happiness = Math.min(100, gameState.happiness + food.effects.happiness);
-    gameState.energy = Math.min(100, gameState.energy + food.effects.energy);
+    gameState.hunger = clamp(gameState.hunger + food.effects.hunger, 0, 100);
+    if (food.effects.mood) gameState.mood = clamp(gameState.mood + food.effects.mood, 0, 100);
+    if (food.effects.affection) gameState.affection = clamp(gameState.affection + food.effects.affection, 0, 100);
+    if (food.effects.energy) gameState.energy = clamp(gameState.energy + food.effects.energy, 0, 100);
+
+    gameState.feedCount++;
 
     playSound('feed');
-    closeScreen('feed-screen');
+    showMessage(`${food.name}をあげた`);
+    closeAllModals();
     saveGameState();
     updateUI();
 }
@@ -323,9 +293,11 @@ function feedPet(food) {
 function doClean() {
     if (gameState.cleanliness < 100) {
         gameState.cleanliness = 100;
-        gameState.dirtLevel = 0;
+        gameState.energy = clamp(gameState.energy + 5, 0, 100);
+        gameState.cleanCount++;
+
         playSound('clean');
-        updateDirtDisplay();
+        showMessage('きれいになった');
         saveGameState();
         updateUI();
     }
@@ -334,25 +306,25 @@ function doClean() {
 function useMedicine() {
     if (gameState.isSick) {
         gameState.isSick = false;
-        gameState.energy = Math.min(100, gameState.energy + 50);
+        gameState.energy = clamp(gameState.energy + 30, 0, 100);
+
         playSound('heal');
+        showMessage('体調が回復した');
         saveGameState();
         updateUI();
     } else {
-        alert('病気ではありません');
+        showMessage('体調は問題ない');
     }
 }
 
-function toggleSleep() {
-    gameState.isSleeping = !gameState.isSleeping;
-    playSound('sleep');
-    saveGameState();
-    updateUI();
+function toggleMute() {
+    isMuted = !isMuted;
+    document.getElementById('btn-mute').textContent = 'ミュート: ' + (isMuted ? 'ON' : 'OFF');
 }
 
 function resetGame() {
-    if (confirm('本当にリセットしますか？すべてのデータが削除されます。')) {
-        localStorage.removeItem('eggchi_save');
+    if (confirm('本当にリセットしますか？')) {
+        localStorage.removeItem('mirumono_save');
         location.reload();
     }
 }
@@ -360,212 +332,141 @@ function resetGame() {
 // ========================================
 // ミニゲーム
 // ========================================
-function startMinigame(gameType) {
-    document.getElementById('game-select').style.display = 'none';
-
-    if (gameType === 'timing') {
-        document.getElementById('timing-game').classList.remove('hidden');
-        initTimingGame();
-    } else if (gameType === 'choice') {
-        document.getElementById('choice-game').classList.remove('hidden');
-        initChoiceGame();
-    }
+function startMiniGame() {
+    miniGameActive = true;
+    gameBarPosition = 0;
+    gameBarDirection = 1;
+    document.getElementById('game-result').textContent = '';
+    animateMiniGame();
 }
 
-// タイミングゲーム
-function initTimingGame() {
-    const canvas = document.getElementById('timing-canvas');
+function animateMiniGame() {
+    if (!miniGameActive) return;
+
+    const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
+    const speed = 3;
 
-    timingGameState = {
-        position: 0,
-        direction: 1,
-        speed: 2,
-        active: true,
-        ctx: ctx,
-        canvas: canvas
-    };
-
-    document.getElementById('timing-result').textContent = '';
-    animateTimingGame();
-}
-
-function animateTimingGame() {
-    if (!timingGameState || !timingGameState.active) return;
-
-    const { ctx, canvas, speed, direction } = timingGameState;
-
-    // 位置更新
-    timingGameState.position += speed * direction;
-    if (timingGameState.position >= canvas.width - 20 || timingGameState.position <= 0) {
-        timingGameState.direction *= -1;
+    gameBarPosition += speed * gameBarDirection;
+    if (gameBarPosition >= canvas.width - 20 || gameBarPosition <= 0) {
+        gameBarDirection *= -1;
     }
 
     // 描画
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // ターゲットゾーン
-    ctx.fillStyle = '#4ade80';
-    ctx.fillRect(canvas.width / 2 - 25, 10, 50, 80);
+    ctx.fillStyle = '#6a9a5a';
+    ctx.fillRect(canvas.width / 2 - 20, 20, 40, 60);
 
-    // 移動するバー
-    ctx.fillStyle = '#ef4444';
-    ctx.fillRect(timingGameState.position, 30, 20, 40);
+    // 移動バー
+    ctx.fillStyle = '#8a3a3a';
+    ctx.fillRect(gameBarPosition, 35, 20, 30);
 
-    requestAnimationFrame(animateTimingGame);
+    requestAnimationFrame(animateMiniGame);
 }
 
-function timingGameClick() {
-    if (!timingGameState || !timingGameState.active) return;
+function onGameTap() {
+    if (!miniGameActive) return;
 
-    const { canvas, position } = timingGameState;
+    miniGameActive = false;
+
+    const canvas = document.getElementById('game-canvas');
     const center = canvas.width / 2;
-    const distance = Math.abs(position + 10 - center);
+    const distance = Math.abs((gameBarPosition + 10) - center);
 
     let result = '';
-    let happinessGain = 0;
+    let moodGain = 0;
 
-    if (distance < 15) {
-        result = '🎉 パーフェクト！';
-        happinessGain = 20;
-    } else if (distance < 30) {
-        result = '😊 いいかんじ！';
-        happinessGain = 15;
+    if (distance < 12) {
+        result = '🎉 すごい！';
+        moodGain = 20;
+    } else if (distance < 25) {
+        result = '😊 いいね！';
+        moodGain = 12;
     } else {
-        result = '😅 ざんねん...';
-        happinessGain = 5;
+        result = '😅 おしい';
+        moodGain = 5;
     }
 
-    gameState.happiness = Math.min(100, gameState.happiness + happinessGain);
-    gameState.energy = Math.max(0, gameState.energy - 10);
+    gameState.mood = clamp(gameState.mood + moodGain, 0, 100);
+    gameState.energy = clamp(gameState.energy - 8, 0, 100);
+    gameState.playCount++;
 
-    document.getElementById('timing-result').textContent = result;
-    timingGameState.active = false;
-
+    document.getElementById('game-result').textContent = result;
     playSound('game');
     saveGameState();
     updateUI();
 
-    setTimeout(() => {
-        closeScreen('game-screen');
-    }, 2000);
-}
-
-// 選択ゲーム
-function initChoiceGame() {
-    choiceGameState = {
-        answer: Math.random() < 0.5 ? 'left' : 'right',
-        active: true
-    };
-
-    document.getElementById('choice-result').textContent = '';
-}
-
-function choiceGameClick(choice) {
-    if (!choiceGameState || !choiceGameState.active) return;
-
-    choiceGameState.active = false;
-
-    let result = '';
-    let happinessGain = 0;
-
-    if (choice === choiceGameState.answer) {
-        result = '🎉 せいかい！';
-        happinessGain = 20;
-    } else {
-        result = '😅 はずれ...';
-        happinessGain = 5;
-    }
-
-    gameState.happiness = Math.min(100, gameState.happiness + happinessGain);
-    gameState.energy = Math.max(0, gameState.energy - 10);
-
-    document.getElementById('choice-result').textContent = result;
-
-    playSound('game');
-    saveGameState();
-    updateUI();
-
-    setTimeout(() => {
-        closeScreen('game-screen');
-    }, 2000);
+    setTimeout(closeAllModals, 1500);
 }
 
 // ========================================
 // UI更新
 // ========================================
 function updateUI() {
-    // 時刻表示
-    const now = new Date();
-    document.getElementById('time-display').textContent =
-        String(now.getHours()).padStart(2, '0') + ':' +
-        String(now.getMinutes()).padStart(2, '0');
-
     // ステータスアイコン
-    updateStatusIcon('icon-hunger', gameState.hunger > 60);
-    updateStatusIcon('icon-energy', gameState.energy < 30);
-    updateStatusIcon('icon-happiness', gameState.happiness < 30);
-    updateStatusIcon('icon-cleanliness', gameState.cleanliness < 30);
-    updateStatusIcon('icon-sick', gameState.isSick, true);
-    updateStatusIcon('icon-sleep', gameState.isSleeping, true);
+    updateIcon('icon-hunger', gameState.hunger > 60);
+    updateIcon('icon-energy', gameState.energy < 30);
+    updateIcon('icon-mood', gameState.mood < 30);
+    updateIcon('icon-clean', gameState.cleanliness < 30);
+    updateIcon('icon-sick', gameState.isSick);
 
-    // ペット名と年齢
+    // ペット情報
     const stage = speciesData.stages.find(s => s.id === gameState.stageId);
     if (stage) {
         document.getElementById('pet-name').textContent = stage.name;
     }
-    document.getElementById('pet-age').textContent = `年齢: ${Math.floor(gameState.age)}分`;
-
-    // 汚れ表示
-    updateDirtDisplay();
+    document.getElementById('pet-info').textContent = `年齢: ${Math.floor(gameState.age)}分`;
 
     // ペット描画
     drawPet();
 }
 
-function updateStatusIcon(iconId, isActive, alwaysShow = false) {
-    const icon = document.getElementById(iconId);
-    if (alwaysShow) {
-        icon.classList.toggle('hidden', !isActive);
-    }
-    icon.classList.toggle('active', isActive);
-}
-
-function updateDirtDisplay() {
-    const container = document.getElementById('dirt-container');
-    container.innerHTML = '';
-
-    for (let i = 0; i < gameState.dirtLevel; i++) {
-        const dirt = document.createElement('div');
-        dirt.className = 'dirt';
-        dirt.textContent = '💩';
-        dirt.style.left = (20 + i * 60) + 'px';
-        dirt.style.bottom = (10 + Math.random() * 40) + 'px';
-        container.appendChild(dirt);
+function updateIcon(id, active) {
+    const icon = document.getElementById(id);
+    if (active) {
+        icon.classList.remove('hidden');
+        icon.classList.add('active');
+    } else {
+        icon.classList.add('hidden');
+        icon.classList.remove('active');
     }
 }
 
-function updateMenuStatus() {
+function updateMenuUI() {
     const stage = speciesData.stages.find(s => s.id === gameState.stageId);
 
     // ステータス値
     document.getElementById('val-hunger').textContent = Math.floor(gameState.hunger);
     document.getElementById('val-energy').textContent = Math.floor(gameState.energy);
-    document.getElementById('val-happiness').textContent = Math.floor(gameState.happiness);
-    document.getElementById('val-cleanliness').textContent = Math.floor(gameState.cleanliness);
-    document.getElementById('val-age-detail').textContent = Math.floor(gameState.age) + '分';
-    document.getElementById('val-stage').textContent = stage ? stage.name : '不明';
-    document.getElementById('val-mistakes').textContent = gameState.mistakes + '回';
+    document.getElementById('val-mood').textContent = Math.floor(gameState.mood);
+    document.getElementById('val-clean').textContent = Math.floor(gameState.cleanliness);
+    document.getElementById('val-affection').textContent = Math.floor(gameState.affection);
 
-    // メーター
-    document.getElementById('meter-hunger').style.width = (100 - gameState.hunger) + '%';
-    document.getElementById('meter-energy').style.width = gameState.energy + '%';
-    document.getElementById('meter-happiness').style.width = gameState.happiness + '%';
-    document.getElementById('meter-cleanliness').style.width = gameState.cleanliness + '%';
+    // バー
+    document.getElementById('bar-hunger').style.width = (100 - gameState.hunger) + '%';
+    document.getElementById('bar-energy').style.width = gameState.energy + '%';
+    document.getElementById('bar-mood').style.width = gameState.mood + '%';
+    document.getElementById('bar-clean').style.width = gameState.cleanliness + '%';
+    document.getElementById('bar-affection').style.width = gameState.affection + '%';
+
+    // 情報
+    document.getElementById('menu-name').textContent = stage ? stage.name : '-';
+    document.getElementById('menu-age').textContent = Math.floor(gameState.age);
+    document.getElementById('menu-care').textContent = determineCareType();
+}
+
+function showMessage(text) {
+    const area = document.getElementById('message-area');
+    area.textContent = text;
+    setTimeout(() => {
+        area.textContent = '';
+    }, 3000);
 }
 
 // ========================================
-// ペット描画（Canvas）
+// ペット描画
 // ========================================
 function drawPet() {
     const canvas = document.getElementById('pet-canvas');
@@ -578,165 +479,98 @@ function drawPet() {
 
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const appearance = stage.appearance;
+    const app = stage.appearance;
 
-    // アニメーション（簡易的な揺れ）
-    const time = Date.now() / 1000;
-    const wobble = Math.sin(time * 2) * 3;
+    // アニメーション用の揺れ
+    const wobble = Math.sin(animationTime * 0.002) * 3;
 
-    // 体の描画
-    ctx.fillStyle = appearance.color;
+    ctx.save();
+    ctx.translate(centerX, centerY + wobble);
 
-    if (appearance.shape === 'oval') {
-        // 卵
+    // 影
+    if (app.shadowLength) {
+        ctx.fillStyle = 'rgba(0, 0, 0, ' + (app.opacity * 0.3) + ')';
         ctx.beginPath();
-        ctx.ellipse(centerX, centerY, appearance.size * 0.6, appearance.size * 0.8, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, app.size * 0.8, app.size * 0.6, app.shadowLength * 0.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 本体
+    ctx.globalAlpha = app.opacity;
+    ctx.fillStyle = app.baseColor;
+
+    if (app.type === 'shadow_sphere') {
+        // カゲダマ
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, app.size);
+        gradient.addColorStop(0, app.glowColor);
+        gradient.addColorStop(1, app.baseColor);
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, app.size, 0, Math.PI * 2);
         ctx.fill();
 
-        // 模様（スポット）
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.beginPath();
-        ctx.arc(centerX - 15, centerY - 10, 8, 0, Math.PI * 2);
-        ctx.arc(centerX + 10, centerY + 5, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-    } else if (appearance.shape === 'round') {
-        // 幼体（丸い）
-        ctx.save();
-        ctx.translate(centerX, centerY + wobble);
-
+    } else if (app.eyeCount > 0) {
         // 体
         ctx.beginPath();
-        ctx.arc(0, 0, appearance.size * 0.7, 0, Math.PI * 2);
+        ctx.arc(0, 0, app.size * 0.7, 0, Math.PI * 2);
         ctx.fill();
 
-        // 模様（ストライプ）
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.lineWidth = 4;
-        for (let i = -2; i <= 2; i++) {
+        // 光のオーラ
+        if (app.particles) {
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = app.glowColor;
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2 + animationTime * 0.001;
+                const dist = app.size * 0.9;
+                const x = Math.cos(angle) * dist;
+                const y = Math.sin(angle) * dist;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = app.opacity;
+        }
+
+        // 目
+        ctx.fillStyle = '#000';
+        if (app.eyeCount === 1) {
             ctx.beginPath();
-            ctx.moveTo(-appearance.size * 0.5, i * 10);
-            ctx.lineTo(appearance.size * 0.5, i * 10);
+            ctx.arc(0, -5, 8, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (app.eyeCount === 2) {
+            ctx.beginPath();
+            ctx.arc(-12, -10, 6, 0, Math.PI * 2);
+            ctx.arc(12, -10, 6, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (app.eyeCount === 4) {
+            // 4つの目
+            ctx.beginPath();
+            ctx.arc(-15, -12, 5, 0, Math.PI * 2);
+            ctx.arc(15, -12, 5, 0, Math.PI * 2);
+            ctx.arc(-8, 8, 4, 0, Math.PI * 2);
+            ctx.arc(8, 8, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 表情（病気時）
+        if (gameState.isSick) {
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 15, 10, 0.1, Math.PI - 0.1);
+            ctx.stroke();
+        } else if (gameState.mood > 70) {
+            ctx.beginPath();
+            ctx.arc(0, 12, 10, 0.1, Math.PI - 0.1, true);
             ctx.stroke();
         }
-
-        // 目
-        if (appearance.eyes) {
-            ctx.fillStyle = '#000';
-            ctx.beginPath();
-            ctx.arc(-12, -8, 4, 0, Math.PI * 2);
-            ctx.arc(12, -8, 4, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // 手足
-        if (appearance.limbs) {
-            ctx.fillStyle = appearance.color;
-            ctx.fillRect(-appearance.size * 0.8, appearance.size * 0.4, 10, 15);
-            ctx.fillRect(appearance.size * 0.8 - 10, appearance.size * 0.4, 10, 15);
-        }
-
-        ctx.restore();
-
-    } else if (appearance.shape === 'upright') {
-        // 成体（直立）
-        ctx.save();
-        ctx.translate(centerX, centerY + wobble);
-
-        // 体
-        ctx.fillStyle = appearance.color;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, appearance.size * 0.5, appearance.size * 0.7, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 頭
-        ctx.beginPath();
-        ctx.arc(0, -appearance.size * 0.6, appearance.size * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 模様
-        if (appearance.pattern === 'hearts') {
-            ctx.fillStyle = 'rgba(255, 192, 203, 0.6)';
-            // ハート（簡易）
-            ctx.beginPath();
-            ctx.arc(-8, 0, 6, 0, Math.PI * 2);
-            ctx.arc(8, 0, 6, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // 目
-        if (appearance.eyes) {
-            ctx.fillStyle = '#000';
-            ctx.beginPath();
-            ctx.arc(-10, -appearance.size * 0.6, 4, 0, Math.PI * 2);
-            ctx.arc(10, -appearance.size * 0.6, 4, 0, Math.PI * 2);
-            ctx.fill();
-
-            // 表情
-            if (gameState.isSick) {
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(0, -appearance.size * 0.4, 8, 0.2, Math.PI - 0.2);
-                ctx.stroke();
-            } else if (gameState.happiness > 60) {
-                ctx.beginPath();
-                ctx.arc(0, -appearance.size * 0.45, 8, 0.2, Math.PI - 0.2, true);
-                ctx.stroke();
-            }
-        }
-
-        // 手足
-        if (appearance.limbs >= 2) {
-            ctx.fillStyle = appearance.color;
-            ctx.fillRect(-appearance.size * 0.6, appearance.size * 0.4, 12, 20);
-            ctx.fillRect(appearance.size * 0.6 - 12, appearance.size * 0.4, 12, 20);
-        }
-
-        // 翼
-        if (appearance.wings) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-            ctx.beginPath();
-            ctx.ellipse(-appearance.size * 0.6, 0, 15, 25, -0.3, 0, Math.PI * 2);
-            ctx.ellipse(appearance.size * 0.6, 0, 15, 25, 0.3, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        ctx.restore();
-
-    } else if (appearance.shape === 'squat') {
-        // 不機嫌な成体（ずんぐり）
-        ctx.save();
-        ctx.translate(centerX, centerY + wobble);
-
-        ctx.fillStyle = appearance.color;
-        ctx.fillRect(-appearance.size * 0.5, -appearance.size * 0.3, appearance.size, appearance.size * 0.8);
-
-        // 目
-        if (appearance.eyes) {
-            ctx.fillStyle = '#000';
-            ctx.beginPath();
-            ctx.arc(-15, -10, 3, 0, Math.PI * 2);
-            ctx.arc(15, -10, 3, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        ctx.restore();
     }
 
-    // 睡眠中の表示
-    if (gameState.isSleeping) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.font = '30px serif';
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.fillText('💤', centerX + 30, centerY - 30);
-    }
+    ctx.restore();
 }
 
 // ========================================
-// 効果音（WebAudio）
+// 効果音
 // ========================================
 function playSound(type) {
     if (isMuted || !audioContext) return;
@@ -747,10 +581,9 @@ function playSound(type) {
 
     osc.connect(gain);
     gain.connect(ctx.destination);
+    gain.gain.value = volume * 0.08;
 
-    gain.gain.value = volume * 0.1;
-
-    switch(type) {
+    switch (type) {
         case 'feed':
             osc.frequency.value = 440;
             osc.type = 'sine';
@@ -761,18 +594,17 @@ function playSound(type) {
             osc.frequency.value = 600;
             osc.type = 'square';
             osc.start();
-            osc.stop(ctx.currentTime + 0.15);
+            osc.stop(ctx.currentTime + 0.12);
             break;
         case 'game':
             osc.frequency.value = 800;
             osc.type = 'triangle';
             osc.start();
-            osc.stop(ctx.currentTime + 0.2);
+            osc.stop(ctx.currentTime + 0.15);
             break;
         case 'evolution':
-            // 上昇音
             osc.frequency.setValueAtTime(200, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5);
+            osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.5);
             osc.type = 'sawtooth';
             osc.start();
             osc.stop(ctx.currentTime + 0.5);
@@ -781,15 +613,7 @@ function playSound(type) {
             osc.frequency.value = 523;
             osc.type = 'sine';
             osc.start();
-            osc.stop(ctx.currentTime + 0.3);
-            break;
-        case 'sleep':
-            osc.frequency.value = 300;
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(volume * 0.1, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.5);
+            osc.stop(ctx.currentTime + 0.25);
             break;
     }
 }
@@ -800,18 +624,20 @@ function playSound(type) {
 function startGameLoop() {
     function loop() {
         const now = Date.now();
-        const delta = now - lastUpdateTime;
+        animationTime = now;
 
-        // 1秒ごとに更新
-        if (delta >= 1000) {
-            applyTimeProgression(delta);
+        // 1秒ごとに状態更新
+        if (now - lastTickTime >= 1000) {
+            applyTimeProgression(now - lastTickTime);
             updateUI();
-            lastUpdateTime = now;
+            lastTickTime = now;
         }
 
-        animationFrame = requestAnimationFrame(loop);
-    }
+        // 描画は常に更新（アニメーション用）
+        drawPet();
 
+        requestAnimationFrame(loop);
+    }
     loop();
 }
 

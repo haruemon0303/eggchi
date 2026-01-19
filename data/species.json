@@ -2,121 +2,141 @@
   "stages": [
     {
       "id": "egg",
-      "name": "タマコ",
+      "name": "カゲダマ",
       "minAge": 0,
-      "maxAge": 10,
-      "description": "丸い殻に包まれた謎の生命体",
+      "maxAge": 5,
+      "description": "影の中からうまれた小さな玉",
       "appearance": {
-        "shape": "oval",
-        "color": "#FFE4B5",
-        "pattern": "spots",
-        "size": 40
-      },
-      "animations": {
-        "idle": "wobble",
-        "happy": "bounce",
-        "sad": "shake"
+        "type": "shadow_sphere",
+        "baseColor": "#2a2a3a",
+        "glowColor": "#6a5acd",
+        "size": 35,
+        "opacity": 0.8,
+        "eyeCount": 0
       }
     },
     {
       "id": "child",
-      "name": "コロリン",
-      "minAge": 10,
-      "maxAge": 60,
-      "description": "元気に動き回る小さな生き物",
+      "name": "ミルコ",
+      "minAge": 5,
+      "maxAge": 30,
+      "description": "目をあけて何かを見つめている",
       "appearance": {
-        "shape": "round",
-        "color": "#87CEEB",
-        "pattern": "stripe",
-        "size": 50,
-        "eyes": true,
-        "limbs": 2
-      },
-      "animations": {
-        "idle": "sway",
-        "happy": "jump",
-        "sad": "droop"
+        "type": "watcher",
+        "baseColor": "#3a3a4a",
+        "glowColor": "#8a7aed",
+        "size": 45,
+        "opacity": 0.85,
+        "eyeCount": 2,
+        "shadowLength": 20
       },
       "evolutionRequirements": {
-        "minAge": 10,
-        "minCareQuality": 50,
-        "maxMistakes": 5
+        "minAge": 5
       }
     },
     {
-      "id": "adult_happy",
-      "name": "ハピネル",
-      "minAge": 60,
+      "id": "adult_clean",
+      "name": "ヒカルモノ",
+      "minAge": 30,
       "maxAge": 9999,
-      "description": "愛情いっぱいに育った理想の姿",
+      "description": "清潔に保たれた者は光を宿す",
       "appearance": {
-        "shape": "upright",
-        "color": "#FFB6C1",
-        "pattern": "hearts",
-        "size": 60,
-        "eyes": true,
-        "limbs": 4,
-        "wings": true
-      },
-      "animations": {
-        "idle": "float",
-        "happy": "spin",
-        "sad": "dim"
+        "type": "shining",
+        "baseColor": "#e0e0ff",
+        "glowColor": "#fffacd",
+        "size": 55,
+        "opacity": 0.9,
+        "eyeCount": 2,
+        "shadowLength": 10,
+        "particles": true
       },
       "evolutionRequirements": {
-        "minAge": 60,
-        "minCareQuality": 80,
-        "maxMistakes": 3
+        "minAge": 30,
+        "careType": "clean"
       }
     },
     {
-      "id": "adult_normal",
-      "name": "ノマール",
-      "minAge": 60,
+      "id": "adult_play",
+      "name": "アソブモノ",
+      "minAge": 30,
       "maxAge": 9999,
-      "description": "平凡だけど愛らしい成体",
+      "description": "遊びを好む者は目が増える",
       "appearance": {
-        "shape": "upright",
-        "color": "#98FB98",
-        "pattern": "dots",
-        "size": 60,
-        "eyes": true,
-        "limbs": 4
-      },
-      "animations": {
-        "idle": "bob",
-        "happy": "wiggle",
-        "sad": "slouch"
+        "type": "playful",
+        "baseColor": "#7a6aaa",
+        "glowColor": "#ff69b4",
+        "size": 55,
+        "opacity": 0.9,
+        "eyeCount": 4,
+        "shadowLength": 15,
+        "bouncy": true
       },
       "evolutionRequirements": {
-        "minAge": 60,
-        "minCareQuality": 50,
-        "maxMistakes": 10
+        "minAge": 30,
+        "careType": "play"
       }
     },
     {
-      "id": "adult_poor",
-      "name": "グルーモ",
-      "minAge": 60,
+      "id": "adult_neglect",
+      "name": "カゲモノ",
+      "minAge": 30,
       "maxAge": 9999,
-      "description": "ケア不足で少し不機嫌な姿",
+      "description": "放っておかれた者は影を深める",
       "appearance": {
-        "shape": "squat",
-        "color": "#DDA0DD",
-        "pattern": "messy",
-        "size": 60,
-        "eyes": true,
-        "limbs": 3
-      },
-      "animations": {
-        "idle": "sulk",
-        "happy": "perk",
-        "sad": "grumble"
+        "type": "shadowy",
+        "baseColor": "#1a1a2a",
+        "glowColor": "#4a4a6a",
+        "size": 55,
+        "opacity": 0.7,
+        "eyeCount": 1,
+        "shadowLength": 40,
+        "dark": true
       },
       "evolutionRequirements": {
-        "minAge": 60,
-        "minCareQuality": 0,
-        "maxMistakes": 999
+        "minAge": 30,
+        "careType": "neglect"
+      }
+    },
+    {
+      "id": "adult_feed",
+      "name": "マンプクモノ",
+      "minAge": 30,
+      "maxAge": 9999,
+      "description": "よく食べた者は満ち足りて丸くなる",
+      "appearance": {
+        "type": "satisfied",
+        "baseColor": "#9a8aba",
+        "glowColor": "#dda0dd",
+        "size": 60,
+        "opacity": 0.85,
+        "eyeCount": 2,
+        "shadowLength": 15,
+        "round": true
+      },
+      "evolutionRequirements": {
+        "minAge": 30,
+        "careType": "feed"
+      }
+    },
+    {
+      "id": "adult_balanced",
+      "name": "フツウモノ",
+      "minAge": 30,
+      "maxAge": 9999,
+      "description": "バランスよく育った標準的な姿",
+      "appearance": {
+        "type": "balanced",
+        "baseColor": "#5a5a7a",
+        "glowColor": "#9a9acd",
+        "size": 55,
+        "opacity": 0.85,
+        "eyeCount": 2,
+        "shadowLength": 20,
+        "balanced": true
+      },
+      "evolutionRequirements": {
+        "minAge": 30,
+        "careType": "balanced"
       }
     }
   ]

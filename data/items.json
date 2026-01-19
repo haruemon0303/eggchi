@@ -1,82 +1,51 @@
 {
   "foods": [
     {
-      "id": "snack_a",
-      "name": "ポポの実",
-      "description": "小さくて甘い実",
+      "id": "shadow_drop",
+      "name": "カゲのしずく",
+      "description": "影から滴るエネルギー",
       "effects": {
-        "hunger": -20,
-        "happiness": 5,
-        "energy": 10
-      },
-      "icon": "berry"
+        "hunger": -25,
+        "mood": 3
+      }
     },
     {
-      "id": "meal_a",
-      "name": "もぐもぐパン",
-      "description": "ふんわり焼きたてパン",
+      "id": "moon_dust",
+      "name": "ツキのこな",
+      "description": "月明かりから集めた粉",
       "effects": {
         "hunger": -40,
-        "happiness": 10,
-        "energy": 20
-      },
-      "icon": "bread"
+        "mood": 8,
+        "affection": 2
+      }
     },
     {
-      "id": "treat_a",
-      "name": "キラキラゼリー",
-      "description": "特別なご褒美ゼリー",
+      "id": "void_candy",
+      "name": "ヨルのアメ",
+      "description": "夜が凝縮された甘いもの",
       "effects": {
         "hunger": -30,
-        "happiness": 20,
-        "energy": 15
-      },
-      "icon": "jelly"
+        "mood": 12,
+        "energy": 5
+      }
     }
   ],
-  "toys": [
-    {
-      "id": "toy_ball",
-      "name": "コロコロボール",
-      "description": "転がして遊べるボール",
-      "effects": {
-        "happiness": 15,
-        "energy": -10
-      },
-      "minigame": "timing"
-    },
-    {
-      "id": "toy_puzzle",
-      "name": "カチカチパズル",
-      "description": "頭を使うパズル",
-      "effects": {
-        "happiness": 20,
-        "energy": -15
-      },
-      "minigame": "choice"
+  "medicine": {
+    "id": "light_mist",
+    "name": "ヒカリのきり",
+    "description": "体調を整える光の霧",
+    "effects": {
+      "sick": false,
+      "energy": 30
     }
-  ],
-  "medicine": [
-    {
-      "id": "medicine_basic",
-      "name": "げんきぐすり",
-      "description": "病気を治す薬",
-      "effects": {
-        "sick": false,
-        "health": 50
-      },
-      "icon": "pill"
+  },
+  "cleaning": {
+    "id": "star_brush",
+    "name": "ホシのブラシ",
+    "description": "星屑でできた掃除道具",
+    "effects": {
+      "cleanliness": 100,
+      "energy": 5
     }
-  ],
-  "cleaning": [
-    {
-      "id": "clean_basic",
-      "name": "ピカピカブラシ",
-      "description": "汚れを落とす",
-      "effects": {
-        "cleanliness": 100
-      },
-      "icon": "brush"
-    }
-  ]
+  }
 }
